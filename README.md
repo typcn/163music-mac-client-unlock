@@ -10,4 +10,4 @@ Unlock netease music mac client using dylib inject
 5. Enjoy! All paid and blocked music are unlocked !
 
 # Build
-```clang -framework Foundation -o unlock.dylib -dynamiclib hijack.m)```
+```clang -framework Foundation -o unlock.dylib -dynamiclib hijack.m```
