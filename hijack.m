@@ -171,8 +171,11 @@ NSMutableDictionary *MusicIDsMap;
     NSString *base64String = [hashData base64EncodedStringWithOptions:NSDataBase64Encoding64CharacterLineLength];
     base64String = [base64String stringByReplacingOccurrencesOfString:@"/" withString:@"_"];
     base64String = [base64String stringByReplacingOccurrencesOfString:@"+" withString:@"-"];
-
+#ifndef OUTSIDE_CHINA
     NSString *finalURL = [NSString stringWithFormat:@"http://m%d.music.126.net/%@/%@.mp3",arc4random_uniform(2)+1,base64String,fid];
+#else
+    NSString *finalURL = [NSString stringWithFormat:@"http://p2.music.126.net/%@/%@.mp3",base64String,fid];
+#endif
     NSLog(@"FinalURL: %@", finalURL);
     return finalURL;
 }
