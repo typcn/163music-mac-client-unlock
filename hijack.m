@@ -13,7 +13,9 @@ NSMutableDictionary *MusicIDsMap;
 @property(nonatomic, strong) NSMutableData *responseData;
 @end
 
-@implementation HijackURLProtocol
+@implementation HijackURLProtocol{
+  BOOL isStream;
+}
 
 + (BOOL)canInitWithRequest:(NSURLRequest *)request {
     if ([NSURLProtocol propertyForKey:@"Hijacked" inRequest:request]) {
@@ -21,6 +23,8 @@ NSMutableDictionary *MusicIDsMap;
     }else if ([[[request URL] path] isEqualToString:@"/eapi/v3/song/detail"]) {
         return YES;
     }else if([[[request URL] path] containsString:@"/eapi/song/enhance/player/url"]){
+        return YES;
+    }else if([[[request URL] host] isEqualToString:@"p2.music.126.net"]){
         return YES;
     }
     return NO;
@@ -35,6 +39,10 @@ NSMutableDictionary *MusicIDsMap;
 }
 
 - (void)startLoading {
+    if([[[self.request URL] host] isEqualToString:@"p2.music.126.net"]){
+        NSLog(@"Using stream mode");
+        isStream = YES;
+    }
     NSMutableURLRequest *newRequest = [self.request mutableCopy];
     [NSURLProtocol setProperty:@YES forKey:@"Hijacked" inRequest:newRequest];
     self.connection = [NSURLConnection connectionWithRequest:newRequest delegate:self];
@@ -47,18 +55,37 @@ NSMutableDictionary *MusicIDsMap;
 
 - (void)connection:(NSURLConnection *)connection didReceiveResponse:(NSURLResponse *)response {
     self.responseData = [[NSMutableData alloc] init];
+    NSURLResponse *res;
+    if(isStream){
+      NSHTTPURLResponse *httpres = (NSHTTPURLResponse *)response;
+      NSMutableDictionary *httpResponseHeaderFields = [[httpres allHeaderFields] mutableCopy];
+      httpResponseHeaderFields[@"Content-Type"] = @"audio/mpeg";
+      res = [[NSHTTPURLResponse alloc] initWithURL:self.request.URL
+                   statusCode:200
+                   HTTPVersion:@"1.1"
+                   headerFields:httpResponseHeaderFields];
+      NSLog(@"Fix mime-type to audio/mpeg, %@",res);
+    }else{
+      res = response;
+    }
     [self.client URLProtocol:self
-          didReceiveResponse:response
+          didReceiveResponse:res
           cacheStoragePolicy:NSURLCacheStorageNotAllowed];
 }
 
 - (void)connection:(NSURLConnection *)connection didReceiveData:(NSData *)data {
-    [self.responseData appendData:data];
+    if(isStream){
+      [self.client URLProtocol:self didLoadData:data];
+    }else{
+      [self.responseData appendData:data];
+    }
 }
 
 - (void)connectionDidFinishLoading:(NSURLConnection *)connection {
     if([[[self.request URL] path] containsString:@"/eapi/song/enhance/player/url"]){
         return [self getEnhancePlayURL];
+    }else if(isStream){
+        return [self.client URLProtocolDidFinishLoading:self];
     }
     id res = [NSJSONSerialization JSONObjectWithData:self.responseData options:NSJSONReadingMutableContainers error:nil];
     if(!res || ![res count]){
