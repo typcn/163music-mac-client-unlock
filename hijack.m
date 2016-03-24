@@ -22,6 +22,8 @@ NSMutableDictionary *MusicIDsMap;
         return NO;
     }else if ([[[request URL] path] isEqualToString:@"/eapi/v3/song/detail"]) {
         return YES;
+    }else if([[[request URL] path] isEqualToString:@"/eapi/v3/playlist/detail"]){
+        return YES;
     }else if([[[request URL] path] containsString:@"/eapi/song/enhance/player/url"]){
         return YES;
     }else if([[[request URL] host] isEqualToString:@"p2.music.126.net"]){
@@ -117,12 +119,21 @@ NSMutableDictionary *MusicIDsMap;
         }
     }
 
-    if(res[@"songs"]){
+    if(![self isEmpty:res[@"songs"]]){
         int scount = [res[@"songs"] count];
         for (int i = 0; i < scount; i++) {
             res[@"songs"][i][@"st"] = @0;
             res[@"songs"][i][@"fee"] = @0;
             MusicIDsMap[res[@"songs"][i][@"id"]] = res[@"songs"][i];
+        }
+    }
+
+    if(![self isEmpty:res[@"playlist"]] && ![self isEmpty:res[@"playlist"][@"tracks"]]){
+        int scount = [res[@"playlist"][@"tracks"] count];
+        for (int i = 0; i < scount; i++) {
+            res[@"playlist"][@"tracks"][i][@"st"] = @0;
+            res[@"playlist"][@"tracks"][i][@"fee"] = @0;
+            MusicIDsMap[res[@"playlist"][@"tracks"][i][@"id"]] = res[@"playlist"][@"tracks"][i];
         }
     }
 
