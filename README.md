@@ -18,6 +18,9 @@ Unlock netease music mac client using dylib inject
 5. Rename unlock_outside.dylib to unlock.dylib
 5. Enjoy! All paid and blocked music are unlocked !
 
+
+If you got LSOpenURL error , run ```chmod +x  /Applications/NeteaseMusic.app/Contents/MacOS/NeteaseMusic```
+
 # Build
 
 If you need change the source code , build with this command
