@@ -228,22 +228,16 @@ NSMutableDictionary *MusicIDsMap;
 @end
 
 BOOL isLoaded = NO;
-// just hijack any function ( the hooked recv seems not working with cfnetwork )
-ssize_t (*original_recv)(int socket, void *buffer, size_t length, int flags);
 
-ssize_t recv(int socket, void *buffer, size_t length, int flags) {
-    if (!original_recv)
-        original_recv = dlsym(RTLD_NEXT, "recv");
-    if (!isLoaded) {
-        MusicIDsMap = [[NSMutableDictionary alloc] init];
-        if ([NSURLProtocol registerClass:[HijackURLProtocol class]]) {
-            NSLog(@"[NMUnlock] 插♂入成功! ");
-        } else {
-            NSLog(@"[NMUnlock] 我去竟然失败了");
-        }
-        isLoaded = YES;
-    }
-
-    ssize_t st = original_recv(socket, buffer, length, flags);
-    return st;
+__attribute__((constructor)) void DllMain()
+{
+  if (!isLoaded) {
+      MusicIDsMap = [[NSMutableDictionary alloc] init];
+      if ([NSURLProtocol registerClass:[HijackURLProtocol class]]) {
+          NSLog(@"[NMUnlock] 插♂入成功! ");
+      } else {
+          NSLog(@"[NMUnlock] 我去竟然失败了");
+      }
+      isLoaded = YES;
+  }
 }
