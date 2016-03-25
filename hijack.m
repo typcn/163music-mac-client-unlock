@@ -26,6 +26,10 @@ NSMutableDictionary *MusicIDsMap;
         return YES;
     }else if([[[request URL] path] containsString:@"/eapi/song/enhance/player/url"]){
         return YES;
+    }else if([[[request URL] path] containsString:@"/eapi/cloudsearch/pc"]){
+        return YES;
+    }else if([[[request URL] path] containsString:@"/eapi/v1/album"]){
+        return YES;
     }else if([[[request URL] host] isEqualToString:@"p2.music.126.net"]){
         return YES;
     }
@@ -94,40 +98,54 @@ NSMutableDictionary *MusicIDsMap;
         NSLog(@"Cannot get json data");
         return [self returnOriginData];
     }
-    if(!res[@"privileges"]){
-        NSLog(@"Cannot get privileges");
-        return [self returnOriginData];
-    }
-    int count = [res[@"privileges"] count];
+
     int replaced = 0;
-    for (int i = 0; i < count; i++) {
-        NSNumber *st = res[@"privileges"][i][@"st"];
-        NSNumber *fee = res[@"privileges"][i][@"fee"];
-        if(st.intValue < 0 || fee.intValue > 0){
-            // if([res[@"privileges"][i][@"maxbr"] intValue] == 999000){
-            //   res[@"privileges"][i][@"maxbr"] = @320000;
-            // }
-            res[@"privileges"][i][@"st"] = @0;
-            res[@"privileges"][i][@"pl"] = res[@"privileges"][i][@"maxbr"];
-            res[@"privileges"][i][@"dl"] = res[@"privileges"][i][@"maxbr"];
-            res[@"privileges"][i][@"fl"] = res[@"privileges"][i][@"maxbr"];
-            res[@"privileges"][i][@"sp"] = @7;
-            res[@"privileges"][i][@"cp"] = @1;
-            res[@"privileges"][i][@"subp"] = @1;
-            res[@"privileges"][i][@"fee"] = @0;
+
+    // Privileges
+    if(![self isEmpty:res[@"privileges"]]){
+      int count = [res[@"privileges"] count];
+      for (int i = 0; i < count; i++) {
+          NSNumber *st = res[@"privileges"][i][@"st"];
+          NSNumber *fee = res[@"privileges"][i][@"fee"];
+          if(st.intValue < 0 || fee.intValue > 0){
+              res[@"privileges"][i] = [self replacePrivilege:res[@"privileges"][i]];
+              replaced++;
+          }
+      }
+    }
+
+    // Search Results
+    if(![self isEmpty:res[@"result"]] && ![self isEmpty:res[@"result"][@"songs"]]){
+        int scount = [res[@"result"][@"songs"] count];
+        for (int i = 0; i < scount; i++) {
+            id song = res[@"result"][@"songs"][i];
+            song[@"st"] = @0;
+            song[@"fee"] = @0;
+            song[@"privilege"] = [self replacePrivilege:song[@"privilege"]];
             replaced++;
+            MusicIDsMap[song[@"id"]] = song;
+            res[@"result"][@"songs"][i] = song;
         }
     }
 
+
+    // Songs
     if(![self isEmpty:res[@"songs"]]){
         int scount = [res[@"songs"] count];
         for (int i = 0; i < scount; i++) {
-            res[@"songs"][i][@"st"] = @0;
-            res[@"songs"][i][@"fee"] = @0;
-            MusicIDsMap[res[@"songs"][i][@"id"]] = res[@"songs"][i];
+            id song = res[@"songs"][i];
+            song[@"st"] = @0;
+            song[@"fee"] = @0;
+            if(![self isEmpty:song[@"privilege"]]){
+              song[@"privilege"] = [self replacePrivilege:song[@"privilege"]];
+              replaced++;
+            }
+            MusicIDsMap[song[@"id"]] = song;
+            res[@"songs"][i] = song;
         }
     }
 
+    // Playlists
     if(![self isEmpty:res[@"playlist"]] && ![self isEmpty:res[@"playlist"][@"tracks"]]){
         int scount = [res[@"playlist"][@"tracks"] count];
         for (int i = 0; i < scount; i++) {
@@ -141,6 +159,19 @@ NSMutableDictionary *MusicIDsMap;
     NSData *d = [NSJSONSerialization dataWithJSONObject:res options:0 error:nil];
     [self.client URLProtocol:self didLoadData:d];
     [self.client URLProtocolDidFinishLoading:self];
+}
+
+- (NSDictionary *)replacePrivilege:(NSDictionary *)dict{
+  NSMutableDictionary *res = [dict mutableCopy];
+  res[@"st"] = @0;
+  res[@"pl"] = res[@"maxbr"];
+  res[@"dl"] = res[@"maxbr"];
+  res[@"fl"] = res[@"maxbr"];
+  res[@"sp"] = @7;
+  res[@"cp"] = @1;
+  res[@"subp"] = @1;
+  res[@"fee"] = @0;
+  return res;
 }
 
 - (void)returnOriginData{
@@ -175,23 +206,63 @@ NSMutableDictionary *MusicIDsMap;
     [self.client URLProtocolDidFinishLoading:self];
 }
 
-- (NSString *)combCDNPlayURL:(NSNumber *)mid{
-    NSDictionary *dic = MusicIDsMap[mid];
-    if (!dic || [dic isEqual:[NSNull null]] || ![dic count]){
+- (NSNumber *)selectFid:(NSNumber *)mid{
+    NSString *requrl = [NSString stringWithFormat:@"http://music.163.com/api/song/detail/?id=%@&ids=[%@]",mid,mid];
+    NSMutableURLRequest* request = [NSMutableURLRequest requestWithURL:[NSURL URLWithString:requrl]];
+    request.HTTPMethod = @"GET";
+    request.timeoutInterval = 5;
+    [request setValue:@"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_4) AppleWebKit/601.5.17 (KHTML, like Gecko)" forHTTPHeaderField:@"User-Agent"];
+
+    NSURLResponse * response = nil;
+    NSError * error = nil;
+    NSData * returnData = [NSURLConnection sendSynchronousRequest:request
+                                                        returningResponse:&response
+                                                                    error:&error];
+    if(!returnData){
         return nil;
     }
-    NSLog(@"Selecting fid: %@",dic);
-    NSNumber *fid;
-    if(![self isEmpty:dic[@"h"]]){
-        fid = dic[@"h"][@"fid"];
-    }else if(![self isEmpty:dic[@"m"]]){
-        fid = dic[@"m"][@"fid"];
-    }else if(![self isEmpty:dic[@"l"]]){
-        fid = dic[@"l"][@"fid"];
-    }else if(![self isEmpty:dic[@"a"]]){
-        fid = dic[@"a"][@"fid"];
+
+    id res = [NSJSONSerialization JSONObjectWithData:returnData options:0 error:nil];
+    if(!res || ![res count]){
+        NSLog(@"Cannot get json data");
+        return nil;
     }
-    NSLog(@"Fid selected");
+    NSNumber *fid;
+    id dic = res[@"songs"][0];
+    if(![self isEmpty:dic[@"hMusic"]]){
+        fid = dic[@"hMusic"][@"dfsId"];
+    }else if(![self isEmpty:dic[@"mMusic"]]){
+        fid = dic[@"mMusic"][@"dfsId"];
+    }else if(![self isEmpty:dic[@"bMusic"]]){
+        fid = dic[@"bMusic"][@"dfsId"];
+    }else if(![self isEmpty:dic[@"audition"]]){
+        fid = dic[@"audition"][@"dfsId"];
+    }
+    return fid;
+}
+
+- (NSString *)combCDNPlayURL:(NSNumber *)mid{
+    NSNumber *fid;
+    NSDictionary *dic = MusicIDsMap[mid];
+    if (!dic || [dic isEqual:[NSNull null]] || ![dic count]){
+        fid = [self selectFid:mid];
+    }else{
+        NSLog(@"Selecting fid: %@",dic);
+        if(![self isEmpty:dic[@"h"]]){
+            fid = dic[@"h"][@"fid"];
+        }else if(![self isEmpty:dic[@"m"]]){
+            fid = dic[@"m"][@"fid"];
+        }else if(![self isEmpty:dic[@"l"]]){
+            fid = dic[@"l"][@"fid"];
+        }else if(![self isEmpty:dic[@"a"]]){
+            fid = dic[@"a"][@"fid"];
+        }
+        NSLog(@"Fid selected");
+    }
+    if(!fid){
+      NSLog(@"Fid select failed");
+      return nil;
+    }
     NSString *fidstr = [NSString stringWithFormat:@"%@",fid];
     const char *c = "3go8&$8*3*3h0k(2)2";
     const char *f = [fidstr UTF8String];
@@ -232,6 +303,7 @@ BOOL isLoaded = NO;
 __attribute__((constructor)) void DllMain()
 {
   if (!isLoaded) {
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 1 * NSEC_PER_SEC), dispatch_get_main_queue(), ^{
       MusicIDsMap = [[NSMutableDictionary alloc] init];
       if ([NSURLProtocol registerClass:[HijackURLProtocol class]]) {
           NSLog(@"[NMUnlock] 插♂入成功! ");
@@ -239,5 +311,6 @@ __attribute__((constructor)) void DllMain()
           NSLog(@"[NMUnlock] 我去竟然失败了");
       }
       isLoaded = YES;
+    });
   }
 }
