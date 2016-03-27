@@ -30,6 +30,8 @@ NSMutableDictionary *MusicIDsMap;
         return YES;
     }else if([[[request URL] path] containsString:@"/eapi/v1/album"]){
         return YES;
+    }else if([[[request URL] path] containsString:@"/eapi/v1/artist"]){
+        return YES;
     }else if([[[request URL] host] isEqualToString:@"p2.music.126.net"]){
         return YES;
     }
@@ -142,6 +144,22 @@ NSMutableDictionary *MusicIDsMap;
             }
             MusicIDsMap[song[@"id"]] = song;
             res[@"songs"][i] = song;
+        }
+    }
+
+    // Hot Songs
+    if(![self isEmpty:res[@"hotSongs"]]){
+        int scount = [res[@"hotSongs"] count];
+        for (int i = 0; i < scount; i++) {
+            id song = res[@"hotSongs"][i];
+            song[@"st"] = @0;
+            song[@"fee"] = @0;
+            if(![self isEmpty:song[@"privilege"]]){
+              song[@"privilege"] = [self replacePrivilege:song[@"privilege"]];
+              replaced++;
+            }
+            MusicIDsMap[song[@"id"]] = song;
+            res[@"hotSongs"][i] = song;
         }
     }
 
