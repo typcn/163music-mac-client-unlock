@@ -21,6 +21,9 @@ Unlock netease music mac client using dylib inject
 
 If you got LSOpenURL error , run ```chmod +x  /Applications/NeteaseMusic.app/Contents/MacOS/NeteaseMusic```
 
+# App Store
+Apps from app store will apply force signature verification, will not work after replace the main executeable, if you are using app store version , please use offical website version instead.
+
 # Build
 
 If you need change the source code , build with this command
