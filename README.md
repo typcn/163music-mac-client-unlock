@@ -3,14 +3,41 @@ Unlock netease music mac client using dylib inject
 
 # Usage
 
-## Inside China
+
+## Auto Unlock with Script
+
+We currently support auto unlock using following commands.
+目前我们支持使用如下指令脚本自动安装。
+
+sh unlock.sh [inside|outside] [false|true] 
+
+### Inside China
+你可以直接运行:
+sh unlock.sh
+并重新打开App.
+
+如果你想脚本解锁后自动帮你打开，请运行
+sh unlock inside true.
+
+### Outside China
+请运行:
+sh unlock.sh outside
+并重新打开App.
+
+如果你想脚本解锁后自动帮你打开，请运行
+sh unlock.sh outside true
+
+
+## Manual Unlock
+
+### Inside China
 1. Download this repo
 2. Enter /Applications/NeteaseMusic.app/Contents/MacOS
 3. Rename "NeteaseMusic" to "NeteaseMusic.org"
 4. Put unlock.dylib and NeteaseMusic to the folder
 5. Enjoy! All paid and blocked music are unlocked !
 
-## Outside China
+### Outside China
 1. Download this repo
 2. Enter /Applications/NeteaseMusic.app/Contents/MacOS
 3. Rename "NeteaseMusic" to "NeteaseMusic.org"
